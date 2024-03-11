@@ -69,4 +69,13 @@ const FLAGS_API = `https://flagcdn.com/w20/`;
         return race;
     }
 
+    window.addEventListener('popstate', function(event) {
+        if (event.state && state.view) {
+            switch(state.view) {
+                case 'raceDetails': fetchRaceDetails(state.season, state.round); break;
+                case 'seasonRaces': fetchRacesBySeason(state.season); break;
+            }
+        }
+    });
+
 })
