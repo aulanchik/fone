@@ -44,8 +44,7 @@ const FLAGS_API = `https://flagcdn.com/w20`;
     function formatDate(inputDate) {
         const date = new Date(inputDate);
         const options = { day: 'numeric', month: 'short' };
-
-        return new Intl.DateTimeFormat('en-GB', options).format(date);
+        return new Intl.DateTimeFormat('en-GB', options).format(date).toUpperCase();
     }
 
     async function fetchData(url) {
@@ -60,47 +59,52 @@ const FLAGS_API = `https://flagcdn.com/w20`;
 
     async function fetchRacesBySeason(season) {
         const data = await fetchData(`${FORMULA_API}/${season}.json`);
-        const races = data.MRData.RaceTable.Races;
-        return races;
+        return data?.MRData?.RaceTable.Races || [];
     }
 
     async function fetchRaceDetails(season, round) {
-        const data = await fetchData(`${FORMULA_API}/${season}/${round}.json`);
-        const race = data.MRData.RaceTable.Races;
-        return race;
+        const data = await fetchData(`${FORMULA_API}/${season}/${round}/results.json`);
+        return data?.MRData?.RaceTable.Races[0] || [];
     }
 
     function getRaceWinner(race) {
-        const winner = race.Results[0];
-        return `${winner.Driver.givenName} ${winner.Driver.familyName}`;
+        const winner = race.Results[0]?.Driver;
+        return `${winner.givenName} ${winner.familyName}`;
     }
 
     function getTopThreeDrivers(race) {
-        const topThree = race.Results.slice(0, 3);
-        const drivers = topThree.map((driver) => `${driver.Driver.givenName} ${driver.Driver.familyName}`);
-        return drivers.join(', ');
+        const topDrivers = race.Results.slice(0, 3);
+        const topThreeList = topDrivers.map(driver => `<li class="podium podium__item">${driver.Driver.givenName} ${driver.Driver.familyName}</li>`).join('');
+        return `<ol class="podium">${topThreeList}</ol>`;
     }
 
     function getFastestLap(race) {
-        const fastestLap = race.Results[0].FastestLap;
-        const time = fastestLap.Time.time;
-        return `${fastestLap.Driver.givenName} ${fastestLap.Driver.familyName} - ${time}`;
+        const { Driver: { givenName, familyName }, FastestLap: { Time: { time } } } = race.Results[0];
+        return `<span>${time} ${givenName} ${familyName}</span>`;
     }
 
-    window.addEventListener('popstate', function(event) {
-        if (event.state && state.view) {
-            switch(state.view) {
-                case 'raceDetails': fetchRaceDetails(state.season, state.round); break;
-                case 'seasonRaces': fetchRacesBySeason(state.season); break;
+    window.addEventListener('popstate', (event) => {
+        if (event.state) {
+            const { view, season, round } = event.state;
+            switch (view) {
+                case 'seasonRaces':
+                    renderSeasonRaces(season);
+                    break;
+                case 'raceDetails':
+                    renderRaceDetails(season, round);
+                    break;
+                default:
+                    console.warn(`Unknown view: ${view}`);
             }
         }
     });
+
 
     const createRaceListElement = (race) => `
         <li data-season="${race.season}" data-round="${race.round}">
             <div class="race">
                 <div class="race race__header">
-                    <span class="race__round">${race.round}</span>
+                    <span class="race__round">Round ${race.round}</span>
                     <span class="race__date">${formatDate(race.date)}</span>
                 </div>
                 <div class="race__body">
@@ -119,7 +123,7 @@ const FLAGS_API = `https://flagcdn.com/w20`;
     const createDetailedRaceElement = (race) => `
         <div class="detailed">
             <div class="detailed__header">
-                <span class="detailed__round">${race.round}</span>
+                <span class="detailed__round">Round ${race.round}</span>
                 <span class="detailed__date">${formatDate(race.date)}</span>
             </div>
             <div class="detailed__body">
@@ -154,6 +158,25 @@ const FLAGS_API = `https://flagcdn.com/w20`;
             console.log('There was an error fetching the data', error);
         }
     }
+
+    async function renderRaceDetails(season, round) {
+        try {
+            currentView = 'raceDetails';
+            const data = await fetchRaceDetails(season, round);
+            app.innerHTML = createDetailedRaceElement(data);
+            history.pushState({ view: currentView, season, round } , null, null);
+        } catch (error) {
+            console.log('There was an error fetching the data', error);
+        }
+    }
+
+    app.addEventListener('click', async function(event) {
+        const selectedElement = event.target.closest('li');
+        if(selectedElement) {
+            const { season, round } = selectedElement.dataset;
+            await renderRaceDetails(season, round);
+        }
+    })
 
     await renderSeasonRaces(2022);
 })();
