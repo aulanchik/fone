@@ -1,7 +1,8 @@
 const FORMULA_API = `https://ergast.com/api/f1`;
-const FLAGS_API = `https://flagcdn.com/w20/`;
+const FLAGS_API = `https://flagcdn.com/w20`;
 
 (async function() {
+
     const countries = {
         "Australia": "au",
         "Azerbaijan": "az",
@@ -35,9 +36,9 @@ const FLAGS_API = `https://flagcdn.com/w20/`;
         "USA": "us"
     };
 
-    function getFlag(countryIso) {
+    function getFlag(country) {
         const isoCode = countries[country];
-        return `${FLAGS_API}/${isoCode}.svg`;
+        return `${FLAGS_API}/${isoCode}.png`;
     }
 
     function formatDate(inputDate) {
@@ -78,4 +79,39 @@ const FLAGS_API = `https://flagcdn.com/w20/`;
         }
     });
 
-})
+    const createRaceListElement = (race) => `
+        <li data-season="${race.season}" data-round="${race.round}">
+            <div class="race">
+                <div class="race race__header">
+                    <span class="race__round">${race.round}</span>
+                    <span class="race__date">${formatDate(race.date)}</span>
+                </div>
+                <div class="race__body">
+                    <div class="flag-container">
+                        <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
+                        <span class="country">${race.Circuit.Location.country}</span>
+                    </div>
+                    <p class="race__name">
+                        ${race.raceName}
+                    </p>
+                </div>
+            </div>    
+        </li>
+    `;
+
+    const app = document.getElementById('app');
+
+    async function renderSeasonRaces(season) {
+        try {
+            currentView = 'seasonRaces';
+            const data = await fetchRacesBySeason(season);
+            const races = data.map((race) => createRaceListElement(race)).join('');
+            app.innerHTML = `<ul class="races">${races}</ul>`
+            history.pushState({ view: currentView, season } , null, null);
+        } catch (error) {
+            console.log('There was an error fetching the data', error);
+        }
+    }
+
+    await renderSeasonRaces(2022);
+})();
