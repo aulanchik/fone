@@ -70,6 +70,23 @@ const FLAGS_API = `https://flagcdn.com/w20`;
         return race;
     }
 
+    function getRaceWinner(race) {
+        const winner = race.Results[0];
+        return `${winner.Driver.givenName} ${winner.Driver.familyName}`;
+    }
+
+    function getTopThreeDrivers(race) {
+        const topThree = race.Results.slice(0, 3);
+        const drivers = topThree.map((driver) => `${driver.Driver.givenName} ${driver.Driver.familyName}`);
+        return drivers.join(', ');
+    }
+
+    function getFastestLap(race) {
+        const fastestLap = race.Results[0].FastestLap;
+        const time = fastestLap.Time.time;
+        return `${fastestLap.Driver.givenName} ${fastestLap.Driver.familyName} - ${time}`;
+    }
+
     window.addEventListener('popstate', function(event) {
         if (event.state && state.view) {
             switch(state.view) {
@@ -98,6 +115,31 @@ const FLAGS_API = `https://flagcdn.com/w20`;
             </div>    
         </li>
     `;
+
+    const createDetailedRaceElement = (race) => `
+        <div class="detailed">
+            <div class="detailed__header">
+                <span class="detailed__round">${race.round}</span>
+                <span class="detailed__date">${formatDate(race.date)}</span>
+            </div>
+            <div class="detailed__body">
+                <div class="detailed__race-winner">
+                    <h1>Winner</h1>
+                    ${getRaceWinner(race)}
+                </div>
+
+                <div class="detailed__podium">
+                    <h1>Top 3 Drivers</h1>
+                    ${getTopThreeDrivers(race)}
+                </div>
+
+                <div class="detailed__fastest-lap">
+                    <h1>Fastest Lap</h1>
+                    ${getFastestLap(race)}
+                </div>
+            </div>
+        </div>
+    `
 
     const app = document.getElementById('app');
 
