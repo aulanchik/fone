@@ -1,5 +1,5 @@
 const FORMULA_API = `https://ergast.com/api/f1`;
-const FLAGS_API = `https://flagcdn.com/w20`;
+const FLAGS_API = `https://flagcdn.com/w80`;
 
 (async function() {
 
@@ -73,7 +73,7 @@ const FLAGS_API = `https://flagcdn.com/w20`;
     }
 
     function getTopThreeDrivers(race) {
-        const topDrivers = race.Results.slice(0, 3);
+        const topDrivers = race.Results?.slice(0, 3);
         const topThreeList = topDrivers.map(driver => `<li class="podium podium__item">${driver.Driver.givenName} ${driver.Driver.familyName}</li>`).join('');
         return `<ol class="podium">${topThreeList}</ol>`;
     }
@@ -101,30 +101,38 @@ const FLAGS_API = `https://flagcdn.com/w20`;
 
 
     const createRaceListElement = (race) => `
-        <li data-season="${race.season}" data-round="${race.round}">
-            <div class="race">
-                <div class="race race__header">
-                    <span class="race__round">Round ${race.round}</span>
-                    <span class="race__date">${formatDate(race.date)}</span>
-                </div>
-                <div class="race__body">
-                    <div class="flag-container">
-                        <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
-                        <span class="country">${race.Circuit.Location.country}</span>
+        <li class="race" data-season="${race.season}" data-round="${race.round}" >
+                <div class="race__header">
+                    <div id="race__round">
+                        <span>Round ${race.round}<span/>
                     </div>
-                    <p class="race__name">
-                        ${race.raceName}
-                    </p>
+                    <div id="race__date">
+                        <span>${formatDate(race.date)}<span/>
+                    </div>
                 </div>
-            </div>    
+            <div class="race__body">
+                <div class="flag-container">
+                    <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
+                    <span>${race.Circuit.Location.country}</span>
+                </div>
+                <div class="race__name">
+                    <h1>${race.raceName}<h1/>
+                </div>
+                <div class="race__icon">
+                </div>
+            </div>
         </li>
     `;
 
     const createDetailedRaceElement = (race) => `
         <div class="detailed">
             <div class="detailed__header">
-                <span class="detailed__round">Round ${race.round}</span>
-                <span class="detailed__date">${formatDate(race.date)}</span>
+                <div id="detailed__round">
+                    <span>Round ${race.round}</span>
+                </div>
+                <div id="detailed__date">
+                    <span>${formatDate(race.date)}</span>
+                </div>
             </div>
             <div class="detailed__body">
                 <div class="detailed__race-winner">
