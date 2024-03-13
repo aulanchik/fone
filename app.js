@@ -1,5 +1,5 @@
 const FORMULA_API = `https://ergast.com/api/f1`;
-const FLAGS_API = `https://flagcdn.com/w20`;
+const FLAGS_API = `https://flagcdn.com/w80`;
 
 (async function() {
 
@@ -47,14 +47,33 @@ const FLAGS_API = `https://flagcdn.com/w20`;
         return new Intl.DateTimeFormat('en-GB', options).format(date).toUpperCase();
     }
 
+    function toggleLoading(show) {
+        const loadingOverlay = document.getElementById('loading__overlay');
+        loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+
     async function fetchData(url) {
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            return data;
-        } catch(error) {
-            console.log(`Error fetching data from URL`,error);
-        }
+        let isRequestInProgress = false;
+            if (isRequestInProgress) {
+                return null; 
+            }
+
+            isRequestInProgress = true;
+            toggleLoading(true);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error(`Error fetching data from URL`, error);
+                return null;
+            } finally {
+                setTimeout(() => {
+                    toggleLoading(false);
+                    isRequestInProgress = false;
+                }, 500); 
+            }
     }
 
     async function fetchRacesBySeason(season) {
@@ -69,18 +88,24 @@ const FLAGS_API = `https://flagcdn.com/w20`;
 
     function getRaceWinner(race) {
         const winner = race.Results[0]?.Driver;
-        return `${winner.givenName} ${winner.familyName}`;
+        const laps = race.Results[0].laps;
+        return `<div class="winner"><span id="driver">${winner.givenName} ${winner.familyName}</span><span id="laps">${laps} Laps</span></div>`;
     }
 
     function getTopThreeDrivers(race) {
-        const topDrivers = race.Results.slice(0, 3);
-        const topThreeList = topDrivers.map(driver => `<li class="podium podium__item">${driver.Driver.givenName} ${driver.Driver.familyName}</li>`).join('');
+        const topDrivers = race.Results?.slice(0, 3);
+        const topThreeList = topDrivers.map(driver => `<li class="podium podium__item"><span>${driver.Driver.givenName} ${driver.Driver.familyName}</span></li>`).join('');
         return `<ol class="podium">${topThreeList}</ol>`;
     }
 
     function getFastestLap(race) {
         const { Driver: { givenName, familyName }, FastestLap: { Time: { time } } } = race.Results[0];
-        return `<span>${time} ${givenName} ${familyName}</span>`;
+        return `<div class="fastest__lap">
+                    <div id="timer"></div>
+                        <div id="time">${time}</div>
+                     <span id="driver">${givenName} ${familyName}</span>
+                </div>
+            `;
     }
 
     window.addEventListener('popstate', (event) => {
@@ -99,48 +124,75 @@ const FLAGS_API = `https://flagcdn.com/w20`;
         }
     });
 
-
     const createRaceListElement = (race) => `
-        <li data-season="${race.season}" data-round="${race.round}">
-            <div class="race">
-                <div class="race race__header">
-                    <span class="race__round">Round ${race.round}</span>
-                    <span class="race__date">${formatDate(race.date)}</span>
-                </div>
-                <div class="race__body">
-                    <div class="flag-container">
-                        <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
-                        <span class="country">${race.Circuit.Location.country}</span>
+        <li class="race" data-season="${race.season}" data-round="${race.round}" >
+                <div class="race__header">
+                    <div class="race__header-item race__round">
+                        <span>Round ${race.round}<span/>
                     </div>
-                    <p class="race__name">
-                        ${race.raceName}
-                    </p>
+                    <div class="race__header-item race__date">
+                        <span>${formatDate(race.date)}<span/>
+                    </div>
                 </div>
-            </div>    
+            <div class="race__body">
+                <div class="flag-container">
+                    <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
+                    <span id="dark">${race.Circuit.Location.country}</span>
+                </div>
+                <div class="race__name">
+                    <h1>${race.raceName}<h1/>
+                </div>
+                <div class="race__icon">
+                </div>
+            </div>
         </li>
     `;
 
     const createDetailedRaceElement = (race) => `
-        <div class="detailed">
-            <div class="detailed__header">
-                <span class="detailed__round">Round ${race.round}</span>
-                <span class="detailed__date">${formatDate(race.date)}</span>
+        <div class="detailed__page">
+            <div class="detailed__navigation">
+                <div class="detailed__navigation-item">
+                    <img src="assets/images/chevronLeft.svg" alt="Back" class="navigation-icon">
+                    <span id="back">Back</span>
+                </div>
+                <div id="forward" class="detailed__navigation-item">
+                    <span>Next round</span>
+                    <img src="assets/images/chevronRight.svg" alt="Forward" class="navigation-icon">
+                </div>
             </div>
-            <div class="detailed__body">
-                <div class="detailed__race-winner">
-                    <h1>Winner</h1>
-                    ${getRaceWinner(race)}
+            <div class="detailed">
+                <div class="detailed__header">
+                    <div id="detailed__round" class="detailed__round">
+                        <span>Round ${race.round}</span>
+                    </div>
+                    <div id="detailed__date" class="detailed__date">
+                        <span>${formatDate(race.date)}</span>
+                    </div>
                 </div>
+                <div class="detailed__body">
+                    <div class="flag-container">
+                        <img src="${getFlag(race.Circuit.Location.country)}" alt="${race.Circuit.Location.country}"/>
+                        <span id="light">${race.Circuit.Location.country}</span>
+                    </div>
+                    <div class="detailed__race__name">
+                        <h1>${race.raceName}<h1/>
+                    </div>
+                </div>
+            </div>
+           <div class="detailed__stats">
+            <div class="detailed__stats-item detailed__winner">
+                <span class="detailed__stats-title">Winner</span>
+                ${getRaceWinner(race)}
+            </div>
 
-                <div class="detailed__podium">
-                    <h1>Top 3 Drivers</h1>
-                    ${getTopThreeDrivers(race)}
-                </div>
+            <div class="detailed__stats-item detailed__podium">
+                <span class="detailed__stats-title">Top 3 Drivers</span>
+                ${getTopThreeDrivers(race)}
+            </div>
 
-                <div class="detailed__fastest-lap">
-                    <h1>Fastest Lap</h1>
-                    ${getFastestLap(race)}
-                </div>
+            <div class="detailed__stats-item detailed__fastest-lap">
+                <span class="detailed__stats-title">Fastest Lap</span>
+                ${getFastestLap(race)}
             </div>
         </div>
     `
@@ -149,11 +201,12 @@ const FLAGS_API = `https://flagcdn.com/w20`;
 
     async function renderSeasonRaces(season) {
         try {
-            currentView = 'seasonRaces';
+            currentView = 'seasonRaces';    
             const data = await fetchRacesBySeason(season);
-            const races = data.map((race) => createRaceListElement(race)).join('');
+            const races = data?.map((race) => createRaceListElement(race)).join('');
             app.innerHTML = `<ul class="races">${races}</ul>`
             history.pushState({ view: currentView, season } , null, null);
+
         } catch (error) {
             console.log('There was an error fetching the data', error);
         }
@@ -164,19 +217,36 @@ const FLAGS_API = `https://flagcdn.com/w20`;
             currentView = 'raceDetails';
             const data = await fetchRaceDetails(season, round);
             app.innerHTML = createDetailedRaceElement(data);
-            history.pushState({ view: currentView, season, round } , null, null);
+            history.pushState({ view: currentView, season, round }, null, null);
+
+            app.addEventListener('click', async function (event) {
+                const forwardButton = event.target.closest('#forward');
+                const backButton = event.target.closest('#back');
+
+                if (forwardButton) {
+                    const nextRound = Number(round) + 1;
+                    await renderRaceDetails(season, nextRound);
+                    event.preventDefault(); 
+                } else if (backButton && currentView === 'raceDetails') {
+                    
+                    await renderSeasonRaces(season);
+                    event.preventDefault(); 
+                }
+            });
         } catch (error) {
             console.log('There was an error fetching the data', error);
         }
     }
 
+
     app.addEventListener('click', async function(event) {
         const selectedElement = event.target.closest('li');
-        if(selectedElement) {
+        if(selectedElement && selectedElement.classList.contains('race')) {
+            toggleLoading(true);
             const { season, round } = selectedElement.dataset;
             await renderRaceDetails(season, round);
         }
-    })
+    });
 
     await renderSeasonRaces(2022);
 })();
